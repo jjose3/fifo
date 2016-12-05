@@ -1,0 +1,69 @@
+// conv5.vp
+//; my $bW = parameter( name=>"bitWidth", val=>8, doc=>"Width of input");
+//; my $tp = parameter( name=>"taps", val=>5, doc=>"Number of elements stored in FIFO");
+//; my $dl = parameter( name=>"Delay", val=>4, doc=>"Sequential delay through the unit");
+//; my $nf = parameter( name=>"normfactor", val=>2**$bW, doc=>"Normalization factor 256");
+module `mname` (
+input logic [`$bW-1`:0] unfilteredData,
+input logic [`$bW-1`:0] tapWeights[`$tp-1`:0],
+output logic [`$bW-1`:0] filteredData,
+input logic clk,
+input logic rst
+);
+
+logic [`$bW-1`:0] unfilteredData1;
+logic [`$bW-1`:0] unfilteredData2;
+logic [`$bW-1`:0] unfilteredData3;
+logic [`$bW-1`:0] unfilteredData4;
+
+
+logic [`(2*$bW)-1`:0] unfilteredData0xtp0;
+logic [`(2*$bW)-1`:0] unfilteredData1xtp1;
+logic [`(2*$bW)-1`:0] unfilteredData2xtp2;
+logic [`(2*$bW)-1`:0] unfilteredData3xtp3;
+logic [`(2*$bW)-1`:0] unfilteredData4xtp4;
+
+logic [`(2*$bW)-1`:0] filteredData_nxt;
+
+assign filteredData_nxt = (	unfilteredData0xtp0 + 
+			unfilteredData1xtp1 + 
+			unfilteredData2xtp2 + 
+			unfilteredData3xtp3 + 
+			unfilteredData4xtp4 ) >> `$bW` ;
+
+assign unfilteredData0xtp0 = (unfilteredData *  tapWeights[0]);
+assign unfilteredData1xtp1 = (unfilteredData1 * tapWeights[1]);
+assign unfilteredData2xtp2 = (unfilteredData2 * tapWeights[2]);
+assign unfilteredData3xtp3 = (unfilteredData3 * tapWeights[3]);
+assign unfilteredData4xtp4 = (unfilteredData4 * tapWeights[4]);
+
+
+
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_UNFILTEREDDATA1".$i);
+`$dff->instantiate()`(.d(unfilteredData[`$i`]), .q(unfilteredData1[`$i`]), .clk(clk), .rst(rst));
+//; }
+
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_UNFILTEREDDATA2".$i);
+`$dff->instantiate()`(.d(unfilteredData1[`$i`]), .q(unfilteredData2[`$i`]), .clk(clk), .rst(rst));
+//; }
+
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_UNFILTEREDDATA3".$i);
+`$dff->instantiate()`(.d(unfilteredData2[`$i`]), .q(unfilteredData3[`$i`]), .clk(clk), .rst(rst));
+//; }
+
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_UNFILTEREDDATA4".$i);
+`$dff->instantiate()`(.d(unfilteredData3[`$i`]), .q(unfilteredData4[`$i`]), .clk(clk), .rst(rst));
+//; }
+
+//; for( my $i = 0 ; $i < ($bW) ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_FILTEREDDATA".$i);
+`$dff->instantiate()`(.d(filteredData_nxt[`$i`]), .q(filteredData[`$i`]), .clk(clk), .rst(rst));
+//; }
+
+
+
+endmodule: `mname`

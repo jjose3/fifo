@@ -1,0 +1,79 @@
+// fifo.vp
+//; use Math::Complex;
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+//; my $bW = parameter( name=>"bitWidth", val=>16, doc=>"Width of input");
+//; my $eC = parameter( name=>"occupancy", val=>8, doc=>"Number of elements stored in FIFO");
+//; my $aW = logn($self->get_param("occupancy"), 2);
+//; my $min = parameter(Name=>"Min", Val=>0, doc=>"inclusive minimum");
+//; my $max = parameter(Name=>"Max", Val=>$eC, doc=>"excluded max");
+module `mname` (
+input logic [`$bW-1`:0] push_data,
+input logic push,
+output logic [`$bW-1`:0] pop_data,
+input logic pop,
+input logic clk,
+input logic rst,
+output logic empty,
+output logic full
+);
+
+logic [`$aW`:0] occcnt;
+logic [`$aW`:0] occcnt_nxt;
+logic [`$aW-1`:0] WrPtr;
+logic [`$aW-1`:0] WrPtr_nxt;
+logic [`$aW-1`:0] RdPtr;
+logic [`$aW-1`:0] RdPtr_nxt;
+logic WrEn;
+logic RdEn;
+
+
+//;  my $mem = generate_base( "mem" , "FIFO_MEMORY");
+`$mem->instantiate()`(.WrData(push_data), .WrAddr(WrPtr), .WrEn(WrEn), .RdData(pop_data), .RdAddr(RdPtr), .RdEn(RdEn), .clk(clk));
+
+//; for( my $i = 0 ; $i < $aW+1 ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_OCCCNT".$i);
+`$dff->instantiate()`(.d(occcnt_nxt[`$i`]), .q(occcnt[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < $aW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_WRPTR".$i);
+`$dff->instantiate()`(.d(WrPtr_nxt[`$i`]), .q(WrPtr[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < $aW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_RDPTR".$i);
+`$dff->instantiate()`(.d(RdPtr_nxt[`$i`]), .q(RdPtr[`$i`]), .clk(clk), .rst(rst));
+//; }
+
+assign full  = (occcnt >= `$aW+1`'d`$max`);
+assign empty = (occcnt <= `$aW+1`'d`$min`  );
+
+
+always_comb begin
+	//case({push,pop,full,empty})
+	unique case({push,pop, full, empty})
+		4'b0100 : occcnt_nxt = occcnt - 1;
+		4'b0110 : occcnt_nxt = occcnt - 1;
+		4'b1000 : occcnt_nxt = occcnt + 1;
+		4'b1001 : occcnt_nxt = occcnt + 1;
+		default : occcnt_nxt = occcnt;
+	endcase
+end
+
+always_comb begin
+	case({push,full})
+		2'b10 : WrPtr_nxt = WrPtr + 1;
+		default : WrPtr_nxt = WrPtr;
+	endcase
+end
+always_comb begin
+	case({pop,empty})
+		2'b10 : RdPtr_nxt = RdPtr + 1;
+		default : RdPtr_nxt = RdPtr;
+	endcase
+end
+
+assign WrEn = push && ~full;
+assign RdEn = ~empty;
+
+endmodule: `mname`

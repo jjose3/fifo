@@ -1,0 +1,44 @@
+// mem.vp
+//; use Math::Complex;
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+//; my $bW = parameter( name=>"bitWidth", val=>16, doc=>"Width of input");
+//; my $eC = parameter( name=>"occupancy", val=>8, doc=>"Number of elements stored in FIFO");
+//; my $aW = logn($self->get_param("occupancy"), 2);
+module `mname` (
+input logic [`$bW-1`:0] WrData,
+input logic [`$aW-1`:0] WrAddr,
+input logic WrEn,
+output logic [`$bW-1`:0] RdData,
+input logic [`$aW-1`:0] RdAddr,
+input logic RdEn,
+input clk
+);
+
+logic [`$bW-1`:0] mem [`$eC-1`:0]; // Memory
+
+logic [`$bW-1`:0] WrMem;
+logic [`$bW-1`:0] WrDat;
+assign WrMem = mem[WrAddr];
+assign WrDat = WrData;
+
+
+always @(posedge clk) begin
+//always_comb begin
+	if(WrEn) begin
+		mem[WrAddr] <= WrDat;
+	end else begin
+		mem[WrAddr] <= WrMem;
+	end
+end
+always_comb begin
+	if(RdEn) begin
+		RdData = mem[RdAddr];
+	end else begin
+		RdData = `$bW`'hXXXX;
+	end
+end
+
+
+endmodule: `mname`

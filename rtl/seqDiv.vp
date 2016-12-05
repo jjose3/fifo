@@ -1,0 +1,100 @@
+// seqDiv.vp
+//; use Math::Complex;
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+//; my $bW = parameter( name=>"bitWidth", val=>16, doc=>"Width of input");
+//; my $cbW = logn($self->get_param("bitWidth"), 2);
+//; my $min = parameter(Name=>"Min", Val=>0, doc=>"inclusive minimum");
+//; my $max = parameter(Name=>"Max", Val=>$bW, doc=>"excluded max");
+module `mname` (
+input logic [`$bW-1`:0] num,
+input logic [`$bW-1`:0] den,
+input logic nd_valid,
+output logic nd_ready,
+input logic clk,
+input logic rst,
+output logic qr_valid,
+output logic [`$bW-1`:0] quo,
+output logic [`$bW-1`:0] rem
+);
+
+localparam IDLE = 2'b00;
+localparam CAPTURE = 2'b01;
+localparam BUSY = 2'b10;
+localparam DONE = 2'b11;
+
+logic [`(2*$bW)-1`:0] num_tmpnxt;
+logic [`(2*$bW)-1`:0] num_tmp;
+logic [`(2*$bW)-1`:0] num_shft;
+logic [`(2*$bW)-1`:0] den_tmpnxt;
+logic [`(2*$bW)-1`:0] den_tmp;
+logic [`(2*$bW)-1`:0] den_shft;
+logic [`(2*$bW)-1`:0] numden_diff;
+logic [`$bW-1`:0] quo_shft;
+logic [`$bW-1`:0] quo_tmp;
+logic [`$bW-1`:0] quo_tmpnxt;
+logic [`$bW-1`:0] quo_nxt;
+logic [`$bW-1`:0] rem_nxt;
+logic [`$bW-1`:0] den_org;
+logic [`$bW-1`:0] den_orgnxt;
+logic start;
+logic stop;
+logic stop_nxt;
+logic seqEn;
+logic [`$cbW-1`:0] counter;
+logic [`$cbW-1`:0] counter_nxt;
+logic [1:0] state;
+logic [1:0] next_state;
+
+assign qr_valid = stop_nxt;
+assign nd_ready = stop;
+assign stop_nxt = den_tmp[`(2*$bW)-1`:0] == {`$bW`'d0,den_org[`$bW-1`:0]};
+assign start = nd_valid && nd_ready;
+
+assign num_tmpnxt[`(2*$bW)-1`:0] = start ? {`$bW`'b0,num[`$bW-1`:0]} : num_shft[`(2*$bW)-1`:0];
+assign den_tmpnxt[`(2*$bW)-1`:0] = start ? {1'b0,den[`$bW-1`:0],`$bW-1`'b0} : den_shft[`(2*$bW)-1`:0];
+assign den_orgnxt[`$bW-1`:0] = start ? {den[`$bW-1`:0]} : den_org[`$bW-1`:0];
+		
+assign quo_nxt = {`$bW`{qr_valid}} ? quo_shft : quo;
+assign rem_nxt = {`$bW`{qr_valid}} ? num_shft : rem;
+
+//; for( my $i = 0 ; $i < 2*$bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_NUMTMP".$i);
+`$dff->instantiate()` ( .d(num_tmpnxt[`$i`]), .q(num_tmp[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < 2*$bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_DENTMP".$i);
+`$dff->instantiate()` ( .d(den_tmpnxt[`$i`]), .q(den_tmp[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_QUOTMP".$i);
+`$dff->instantiate()` ( .d(quo_tmpnxt[`$i`]), .q(quo_tmp[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_QUO".$i);
+`$dff->instantiate()` ( .d(quo_nxt[`$i`]), .q(quo[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_REM".$i);
+`$dff->instantiate()` ( .d(rem_nxt[`$i`]), .q(rem[`$i`]), .clk(clk), .rst(rst));
+//; }
+//; for( my $i = 0 ; $i < $bW ; $i++ ){
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_DEN_ORG".$i);
+`$dff->instantiate()` ( .d(den_orgnxt[`$i`]), .q(den_org[`$i`]), .clk(clk), .rst(rst));
+//; }
+//;  my $dff = generate_base( "dff" , "D_FLIP_FLOP_STOP");
+`$dff->instantiate()` ( .d(stop_nxt), .q(stop), .clk(clk), .rst(rst));
+
+//always_comb begin
+//   if(~stop)
+	assign numden_diff = ~rst ? {`2*$bW`{1'b1}} : num_tmp - den_tmp;
+	assign num_shft = (numden_diff[`(2*$bW)-1`] == 1'b0) ?  numden_diff : num_tmp;
+	assign quo_tmpnxt = quo_shft << 1;
+	assign quo_shft = {quo_tmp[`$bW-1`:1],(numden_diff[`(2*$bW)-1`] == 1'b0)};
+	assign den_shft = den_tmp >> 1;
+	assign counter_nxt = seqEn ? counter - 1 : `$bW`'d`$max-1`;
+//end
+
+endmodule: `mname`
+

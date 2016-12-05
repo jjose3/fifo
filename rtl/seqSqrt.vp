@@ -1,0 +1,64 @@
+// seqSqrt.vp
+
+//; # Good Habits
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+
+//; # Parameters
+//; my $bW = parameter( name=>"bitWidth", val=>16 , doc=>"width of the input");
+
+module `mname` (
+	input  logic [`$bW-1`:0] a,
+	input  logic             a_valid,
+	output logic             a_ready,
+
+	input  logic             clk,
+	input  logic             rst,
+
+	output logic [`2*$bW`:0] z,
+	output logic             z_valid
+	);
+
+	logic [`2*$bW-1`:0] a_tmp, a_tmp_nxt, a_shift, partial ;
+	logic [`$bW-1`:0]   b_tmp, b_tmp_nxt, b_shift, shift ;
+	logic [`2*$bW`:0]   z_nxt, accumulation ;
+	logic               start, stop, stop_nxt ; 
+
+	//////////////////////////////
+	// Explicit flops for state
+	//////////////////////////////
+
+	//; my $aFlop = generate( "dff", "d_A", Width=>[($bW)]);
+	//; my $sqFlop = generate( "dff", "d_SQ", Width=>[($bW)]);
+	//; my $sqdiffFlop = generate( "dff", "d_SQDIFF", Width=>[($bW)]);
+	//;# my $sFlop = generate( "dff", "d_s", Width=>[(1)]);
+	`$aFlop->instantiate()` ( .din(a_tmp_nxt), .clk, .rst, .q(a_tmp) );
+	`$sqFlop->instantiate()` ( .din(sq_tmp_nxt), .clk, .rst, .q(sq_tmp) );
+	`$sqdiffFlop->instantiate()` ( .din(sqdiff_tmp_nxt), .clk, .rst, .q(sqdiff_tmp) );
+	//;#`$zFlop->instantiate()` ( .din(z_nxt), .clk, .rst, .q(z) );
+	//;#`$sFlop->instantiate()` ( .din(stop_nxt), .clk, .rst, .q(stop) );
+
+
+	//////////////////////////////
+	// Combinatorial Portion
+	//////////////////////////////
+
+	// We can start when ab is ready and valid
+	assign start = a_ready && a_valid ;
+
+	// We can stop when the multiplier is zero 
+	assign stop = (sq_num > a_tmp) ;
+	assign a_ready = stop ;
+	assign z_valid = stop ; 
+
+	// When we start, we flow the new values, otw the shifted values
+	assign a_tmp_nxt = start ? a : a_tmp ;
+
+	assign sq_tmp_nxt = start ? `$bW`'d1 : sq_num;
+	assign sq_num = sq_tmp + a_tmp;
+	assign sqdiff_tmp_nxt = start ? `$bW`'d3 : sqdiff;
+	assign sqdiff = sqdiff_tmp + `$bW`'d2;
+	
+	assign z = stop && sqdiff;
+endmodule
